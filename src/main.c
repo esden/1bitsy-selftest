@@ -295,17 +295,22 @@ static void clock_setup(void)
 	rcc_periph_clock_enable(RCC_GPIOD);
 }
 
+static void gpio_set_pull(bool pullup)
+{
+	uint32_t gpio_pupd = pullup ? GPIO_PUPD_PULLUP : GPIO_PUPD_PULLDOWN;
+
+	for (int i = 0; i < pin_count; i++) {
+		gpio_mode_setup(pins[i].bank, GPIO_MODE_INPUT,
+			gpio_pupd, pins[i].pin);
+	}
+}
+
 static void gpio_setup(void)
 {
 	/* Set the LED pin GPIO8 (in GPIO port A) to 'output push-pull'. */
 	gpio_mode_setup(GPIOA, GPIO_MODE_OUTPUT,
 			GPIO_PUPD_NONE, GPIO8);
 
-	/* Configure all the test pins to input pull down. */
-	for (int i = 0; i < pin_count; i++) {
-		gpio_mode_setup(pins[i].bank, GPIO_MODE_INPUT,
-			GPIO_PUPD_PULLDOWN, pins[i].pin);
-	}
 }
 
 
@@ -313,7 +318,8 @@ static void gpio_setup(void)
 static bool gpio_test(int index) {
 	uint32_t wait = 0;
 	//uint32_t timeout = 0xFFFFFFFF;
-	uint32_t timeout = 100;
+	uint32_t timeout = 5;
+	bool ret = true;
 
 	/* errm, bye bye */
 	if ((index < 0) || (index >= pin_count)) {
@@ -324,6 +330,7 @@ static bool gpio_test(int index) {
 	gpio_mode_setup(pins[index].bank, GPIO_MODE_INPUT,
 		GPIO_PUPD_PULLUP, pins[index].pin);
 
+	/* Check if the pin reacted to the state change with timeout. */
 	while (wait < timeout) {
 		if (gpio_get(pins[index].bank, pins[index].pin) != 0) {
 			break;
@@ -331,16 +338,60 @@ static bool gpio_test(int index) {
 		wait++;
 	}
 
-	printf("pin %d id %d with wait %ld\n", index, pins[index].id, wait);
-
+	/* Reset the pin to the default state. */
 	gpio_mode_setup(pins[index].bank, GPIO_MODE_INPUT,
 		GPIO_PUPD_PULLDOWN, pins[index].pin);
 
-	return true;
+	/* Analyze the result. */
+	if (wait == timeout) {
+		if (pins[index].expect.flags.pulldown) {
+			/* we expected pulldown, let's retest pulling hard. */
+			gpio_clear(pins[index].bank, pins[index].pin);
+			gpio_mode_setup(pins[index].bank, GPIO_MODE_OUTPUT,
+				GPIO_PUPD_NONE, pins[index].pin);
+			gpio_set(pins[index].bank, pins[index].pin);
+			wait = 0;
+			while (wait < timeout) {
+				if (gpio_get(pins[index].bank, pins[index].pin) != 0) {
+					break;
+				}
+				wait++;
+			}
+			gpio_mode_setup(pins[index].bank, GPIO_MODE_INPUT,
+				GPIO_PUPD_PULLDOWN, pins[index].pin);
+			if (wait == timeout) {
+				printf("ERROR: tiedown ");
+				ret = false;
+			} else {
+				/* All good pulldown confirmed. */
+			}
+		} else {
+			printf("ERROR: pulldown ");
+			ret = false;
+		}
+	} else {
+		if (pins[index].expect.flags.pulldown) {
+			printf("ERROR: expected pulldown ");
+			ret = false;
+		} else {
+			/* we did not expect a pulldown and the pin changed state in time, all good. */
+		}
+	}
+
+	if (!ret) {
+		printf("pin %d id %d with wait %ld\n", index, pins[index].id, wait);
+	}
+
+	return ret;
 }
 
 static void gpio_test_all(void)
 {
+
+	/* Enable pulldown resistors on all pins. */
+	gpio_set_pull(false);
+
+	/* Test if all pins can be pulled high. */
 	for (int i = 0; i < pin_count; i++) {
 		gpio_test(i);
 	}

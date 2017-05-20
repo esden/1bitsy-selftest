@@ -1,9 +1,8 @@
 # README
 
-This is the smallest-possible example program using libopencm3.
+This selftest firmware will start the built in ROM bootloader if started with the user button depressed.
 
-It's intended for the ST STM32F4DISCOVERY eval board. It should blink
-the LEDs on the board.
+The test result will be printed using semihosting via the JTAG/SWD interface.
 
 ## Board connections
 

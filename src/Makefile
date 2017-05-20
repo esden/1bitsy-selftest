@@ -17,11 +17,21 @@
 ## along with this library.  If not, see <http://www.gnu.org/licenses/>.
 ##
 
-BINARY = fancyblink
+BINARY = 1bitsy_selftest
 
-OBJS = main.o
+OBJS = main.o button_boot.o
 
-LDSCRIPT = ../stm32f4-discovery.ld
+LDSCRIPT = ../stm32f4-1bitsy.ld
+
+# To disable, run "make ENABLE_SEMIHOSTING=0" or comment next line out
+ENABLE_SEMIHOSTING ?= 1
+
+ifeq ($(ENABLE_SEMIHOSTING),1)
+LDFLAGS         += --specs=rdimon.specs
+LDLIBS          += -lrdimon
+DEFS            += -DENABLE_SEMIHOSTING=1
+endif
+
 
 include ../libopencm3.target.mk
 

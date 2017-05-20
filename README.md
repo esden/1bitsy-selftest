@@ -1,17 +1,8 @@
 # README
 
-This repository contains an example of structuring your libopencm3 based project.
+This repository contains a selftest firmware for the 1Bitsy STM32F415RGT6 dev board.
 
-The libopencm3 project aims to create an open-source firmware library for
-various ARM Cortex-M3 microcontrollers.
-
-For more information visit http://libopencm3.org
-
-The example are meant as starting point for a stm32f4 discovery board project.
-
-The goal is to demonstrate how one could organize a project. Even though it is
-set up to use stm32f4 discovery board as a target it should be fairly easy to
-adapt to your own platform.
+This firmware uses the JTAG/SWD interface to report the test result back.
 
 ## Usage
 

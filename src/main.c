@@ -305,6 +305,14 @@ static void gpio_set_pull(bool pullup)
 	}
 }
 
+static void gpio_reset_pull(void)
+{
+	for (int i = 0; i < pin_count; i++) {
+		gpio_mode_setup(pins[i].bank, GPIO_MODE_INPUT,
+			GPIO_PUPD_NONE, pins[i].pin);
+	}
+}
+
 static void gpio_setup(void)
 {
 	/* Set the LED pin GPIO8 (in GPIO port A) to 'output push-pull'. */
@@ -314,11 +322,10 @@ static void gpio_setup(void)
 }
 
 
-/* Returns true as success. */
-static bool gpio_test(int index) {
+/* Test if we are able to pull up the pin. Returns true on success. */
+static bool gpio_test_pu(int index) {
 	uint32_t wait = 0;
-	//uint32_t timeout = 0xFFFFFFFF;
-	uint32_t timeout = 5;
+	uint32_t timeout = 10;
 	bool ret = true;
 
 	/* errm, bye bye */
@@ -385,16 +392,105 @@ static bool gpio_test(int index) {
 	return ret;
 }
 
-static void gpio_test_all(void)
+/* Test if we are able to pull down the pin. Returns true on success. */
+static bool gpio_test_pd(int index) {
+	uint32_t wait = 0;
+	uint32_t timeout = 10;
+	bool ret = true;
+
+	/* errm, bye bye */
+	if ((index < 0) || (index >= pin_count)) {
+		return false;
+	}
+
+	/* Set the pin to pullup and check if it worked. */
+	gpio_mode_setup(pins[index].bank, GPIO_MODE_INPUT,
+		GPIO_PUPD_PULLDOWN, pins[index].pin);
+
+	/* Check if the pin reacted to the state change with timeout. */
+	while (wait < timeout) {
+		if (gpio_get(pins[index].bank, pins[index].pin) == 0) {
+			break;
+		}
+		wait++;
+	}
+
+	/* Reset the pin to the default state. */
+	gpio_mode_setup(pins[index].bank, GPIO_MODE_INPUT,
+		GPIO_PUPD_PULLUP, pins[index].pin);
+
+	/* Analyze the result. */
+	if (wait == timeout) {
+		if (pins[index].expect.flags.pullup) {
+			/* we expected pulldown, let's retest pulling hard. */
+			gpio_set(pins[index].bank, pins[index].pin);
+			gpio_mode_setup(pins[index].bank, GPIO_MODE_OUTPUT,
+				GPIO_PUPD_NONE, pins[index].pin);
+			gpio_clear(pins[index].bank, pins[index].pin);
+			wait = 0;
+			while (wait < timeout) {
+				if (gpio_get(pins[index].bank, pins[index].pin) == 0) {
+					break;
+				}
+				wait++;
+			}
+			gpio_mode_setup(pins[index].bank, GPIO_MODE_INPUT,
+				GPIO_PUPD_PULLUP, pins[index].pin);
+			if (wait == timeout) {
+				printf("ERROR: tieup ");
+				ret = false;
+			} else {
+				/* All good pullup confirmed. */
+			}
+		} else {
+			printf("ERROR: pullup ");
+			ret = false;
+		}
+	} else {
+		if (pins[index].expect.flags.pullup) {
+			printf("ERROR: expected pullup ");
+			ret = false;
+		} else {
+			/* we did not expect a pullup and the pin changed state in time, all good. */
+		}
+	}
+
+	if (!ret) {
+		printf("pin %d id %d with wait %ld\n", index, pins[index].id, wait);
+	}
+
+	return ret;
+}
+
+/* Test all pins. Return false on error. */
+static bool gpio_test_all(void)
 {
+	bool ret = true;
 
 	/* Enable pulldown resistors on all pins. */
 	gpio_set_pull(false);
 
 	/* Test if all pins can be pulled high. */
 	for (int i = 0; i < pin_count; i++) {
-		gpio_test(i);
+		if (!gpio_test_pu(i)) {
+			ret = false;
+		}
 	}
+
+	/* Enable pullup resistors on all pins. */
+	gpio_set_pull(true);
+
+	/* Test if all pins can be pulled low. */
+	for (int i = 0; i < pin_count; i++) {
+		if (!gpio_test_pd(i)) {
+			ret = false;
+		}
+	}
+
+	/* Reset all the pins back to default. */
+	gpio_reset_pull();
+
+	return ret;
 }
 
 extern void initialise_monitor_handles(void);
@@ -402,6 +498,7 @@ extern void initialise_monitor_handles(void);
 int main(void)
 {
 	int i;
+	bool result;
 
 	button_boot();
 
@@ -413,14 +510,20 @@ int main(void)
 	/* Set two LEDs for wigwag effect when toggling. */
 	gpio_set(GPIOA, GPIO8);
 
-	gpio_test_all();
+	result = gpio_test_all();
 
 	/* Blink the LEDs (PA8) on the board. */
 	while (1) {
 		/* Toggle LEDs. */
 		gpio_toggle(GPIOA, GPIO8);
-		for (i = 0; i < 6000000; i++) { /* Wait a bit. */
-			__asm__("nop");
+		if (result) {
+			for (i = 0; i < 6000000; i++) { /* Wait a bit. */
+				__asm__("nop");
+			}
+		} else {
+			for (i = 0; i < 1000000; i++) { /* Wait a bit. */
+				__asm__("nop");
+			}
 		}
 	}
 

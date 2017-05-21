@@ -41,7 +41,7 @@ struct pin {
 	} expect;
 };
 
-#define PIN_CNT 38
+#define PIN_CNT 39
 
 static const int pin_count = PIN_CNT;
 
@@ -264,22 +264,48 @@ static const struct pin pins[PIN_CNT] = {
 		.pin = GPIO0,
 		.expect.all = 0
 	},
-	{
+	{ /* B2 has a 10k pulldown. */
 		.id = 43,
 		.bank = GPIOB,
 		.pin = GPIO2,
 		.expect.flags.pulldown = true
 	},
-	{
+	{ /* RTC Crystal */
 		.id = 44,
 		.bank = GPIOC,
 		.pin = GPIO14,
 		.expect.all = 0
 	},
-	{
+	{ /* RTC Crystal */
 		.id = 45,
 		.bank = GPIOC,
 		.pin = GPIO15,
+		.expect.all = 0
+	},
+#if 0
+	{ /* USB V+ */
+		.id = 46,
+		.bank = GPIOA,
+		.pin = GPIO9,
+		.expect.all = 0
+	},
+	{ /* USB D- */
+		.id = 47,
+		.bank = GPIOA,
+		.pin = GPIO11,
+		.expect.all = 0
+	},
+	{ /* USB D+ */
+		.id = 48,
+		.bank = GPIOA,
+		.pin = GPIO12,
+		.expect.all = 0
+	},
+#endif
+	{ /* USB ID */
+		.id = 49,
+		.bank = GPIOA,
+		.pin = GPIO10,
 		.expect.all = 0
 	},
 };

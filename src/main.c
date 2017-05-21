@@ -21,6 +21,7 @@
 
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
+#include <libopencm3/cm3/scs.h>
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -502,6 +503,8 @@ int main(void)
 
 	button_boot();
 
+	/* Enable and initialise the debug monitor handler. */
+	SCS_DEMCR |= SCS_DEMCR_VC_MON_EN;
 	initialise_monitor_handles();
 
 	clock_setup();

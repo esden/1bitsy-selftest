@@ -19,7 +19,7 @@
 
 BINARY = 1bitsy_selftest
 
-OBJS = main.o button_boot.o
+OBJS = main.o button_boot.o rdimon_handler.o
 
 LDSCRIPT = ../stm32f4-1bitsy.ld
 
@@ -28,7 +28,6 @@ ENABLE_SEMIHOSTING ?= 1
 
 ifeq ($(ENABLE_SEMIHOSTING),1)
 LDFLAGS         += --specs=rdimon.specs
-LDLIBS          += -lrdimon
 DEFS            += -DENABLE_SEMIHOSTING=1
 endif
 

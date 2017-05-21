@@ -41,7 +41,9 @@ struct pin {
 	} expect;
 };
 
-#define PIN_CNT 39
+#define PIN_CNT 40
+#define PIN_TIMEOUT 20
+//#define PIN_TIME_PRINT
 
 static const int pin_count = PIN_CNT;
 
@@ -308,6 +310,12 @@ static const struct pin pins[PIN_CNT] = {
 		.pin = GPIO10,
 		.expect.all = 0
 	},
+	{ /* USER button */
+		.id = 50,
+		.bank = GPIOC,
+		.pin = GPIO1,
+		.expect.flags.pullup = true
+	},
 };
 
 /* Set STM32 to 168 MHz. */
@@ -352,7 +360,7 @@ static void gpio_setup(void)
 /* Test if we are able to pull up the pin. Returns true on success. */
 static bool gpio_test_pu(int index) {
 	uint32_t wait = 0;
-	uint32_t timeout = 10;
+	uint32_t timeout = PIN_TIMEOUT;
 	bool ret = true;
 
 	/* errm, bye bye */
@@ -413,8 +421,12 @@ static bool gpio_test_pu(int index) {
 	}
 
 	if (!ret) {
-		printf("pin %d id %d with wait %ld\n", index, pins[index].id, wait);
+		printf("pin id %d with wait %ld\n", pins[index].id, wait);
 	}
+
+#ifdef PIN_TIME_PRINT
+	printf("pu %d -> %ld\n", pins[index].id, wait);
+#endif
 
 	return ret;
 }
@@ -422,7 +434,7 @@ static bool gpio_test_pu(int index) {
 /* Test if we are able to pull down the pin. Returns true on success. */
 static bool gpio_test_pd(int index) {
 	uint32_t wait = 0;
-	uint32_t timeout = 10;
+	uint32_t timeout = PIN_TIMEOUT;
 	bool ret = true;
 
 	/* errm, bye bye */
@@ -483,8 +495,12 @@ static bool gpio_test_pd(int index) {
 	}
 
 	if (!ret) {
-		printf("pin %d id %d with wait %ld\n", index, pins[index].id, wait);
+		printf("pin id %d with wait %ld\n", pins[index].id, wait);
 	}
+
+#ifdef PIN_TIME_PRINT
+	printf("pd %d -> %ld\n", pins[index].id, wait);
+#endif
 
 	return ret;
 }

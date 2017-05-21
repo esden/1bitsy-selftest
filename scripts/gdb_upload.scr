@@ -1,0 +1,13 @@
+set confirm off
+mon ver
+mon tpwr en
+#mon connect_srst enable
+mon jtag
+#mon swdp
+att 1
+load
+compare-sections
+kill
+#shell afplay /System/Library/Sounds/Ping.aiff
+shell paplay /usr/share/sounds/ubuntu/stereo/system-ready.ogg
+shell sleep 1

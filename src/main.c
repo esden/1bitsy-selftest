@@ -318,6 +318,26 @@ static const struct pin pins[PIN_CNT] = {
 	},
 };
 
+struct bank_masks {
+	uint16_t A;
+	uint16_t B;
+	uint16_t C;
+	uint16_t D;
+};
+
+/* This mask shows which pins we are testing for pulldown from the outside.
+ * This list contains all the pins that have holes except B2 as it has a pulldown
+ * and needs to be handeled separately.
+ */
+static const struct bank_masks extconn_pins = {
+	/*     |    |    |    | */
+	.A = 0b0000010011111111,
+	.B = 0b1111111111100011,
+	.C = 0b1111111111111111,
+	.D = 0b0000000000000100
+	/*     |    |    |    | */
+};
+
 /* Set STM32 to 168 MHz. */
 static void clock_setup(void)
 {
@@ -536,6 +556,54 @@ static bool gpio_test_all(void)
 	return ret;
 }
 
+/* Test if all the pins we want are reacting to external stimulus. */
+static bool gpio_test_ext(void)
+{
+	struct bank_masks bank_memory = extconn_pins;
+	int delay = 1000000;
+	bool cycle = false;
+
+	/* Set all pins to pullup. */
+	gpio_set_pull(true);
+
+	/* Collect data until we are happy. */
+	while (true) {
+		bank_memory.A = gpio_get(GPIOA, bank_memory.A);
+		bank_memory.B = gpio_get(GPIOB, bank_memory.B);
+		bank_memory.C = gpio_get(GPIOC, bank_memory.C);
+		bank_memory.D = gpio_get(GPIOD, bank_memory.D);
+
+		if ((bank_memory.A == 0) &&
+			(bank_memory.B == 0) &&
+			(bank_memory.C == 0) &&
+			(bank_memory.D == 0)) {
+			/* All went great, all pins work! */
+			return true;
+		} else {
+			/* not done yet */
+			if (delay == 0) {
+				if (cycle) {
+					cycle = false;
+					delay = 1000000;
+				} else {
+					cycle = true;
+					delay = 50000;
+				}
+				printf("A0x%08X B0x%08X C0x%08X D0x%08X\n",
+					(int)bank_memory.A,
+					(int)bank_memory.B,
+					(int)bank_memory.C,
+					(int)bank_memory.D);
+				gpio_toggle(GPIOA, GPIO8);
+			} else {
+				delay--;
+			}
+		}
+	}
+
+	return false;
+}
+
 extern void initialise_monitor_handles(void);
 
 int main(void)
@@ -556,6 +624,10 @@ int main(void)
 	gpio_set(GPIOA, GPIO8);
 
 	result = gpio_test_all();
+
+	if (result) {
+		gpio_test_ext();
+	}
 
 	/* Blink the LEDs (PA8) on the board. */
 	while (1) {
